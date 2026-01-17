@@ -27,6 +27,8 @@ LoginGraceTime 120
 # Features
 X11Forwarding yes
 PrintMotd yes
+PrintLastLog yes
+UsePAM yes
 AcceptEnv LANG LC_*
 
 # Keep alive
