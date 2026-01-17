@@ -4,7 +4,7 @@
 echo "Configuring SSH server..."
 
 # Configure sshd - key-based auth only
-# SSH handles MOTD and Last Login display (not PAM)
+# PAM handles MOTD and Last Login display (not SSH)
 cat > /etc/ssh/sshd_config << 'EOF'
 # Kraybin Atmosphere SSH Configuration
 
@@ -25,10 +25,10 @@ MaxAuthTries 6
 MaxSessions 10
 LoginGraceTime 120
 
-# Display (SSH handles both MOTD and Last Login)
+# Display - Let PAM handle MOTD and Last Login
 X11Forwarding yes
-PrintMotd yes
-PrintLastLog yes
+PrintMotd no
+PrintLastLog no
 UsePAM yes
 AcceptEnv LANG LC_*
 
@@ -41,19 +41,69 @@ Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
 
 # ============================================
-# Disable ALL PAM display modules (SSH handles it)
+# Configure PAM for MOTD and Last Login
 # ============================================
-# Disable pam_motd.so - prevents duplicate MOTD
-sed -i 's/^session.*pam_motd.so/#&/' /etc/pam.d/sshd 2>/dev/null || true
 
-# Disable pam_lastlog.so - prevents duplicate/conflicting last login
-sed -i 's/^session.*pam_lastlog.so/#&/' /etc/pam.d/sshd 2>/dev/null || true
-sed -i '/pam_lastlog.so/d' /etc/pam.d/sshd 2>/dev/null || true
+# Backup original PAM sshd config
+cp /etc/pam.d/sshd /etc/pam.d/sshd.backup 2>/dev/null || true
 
-# Create lastlog file for SSH's PrintLastLog
+# Create clean PAM sshd config with MOTD and lastlog enabled
+cat > /etc/pam.d/sshd << 'PAMEOF'
+# PAM configuration for the Secure Shell service
+
+# Standard Un*x authentication.
+@include common-auth
+
+# Disallow non-root logins when /etc/nologin exists.
+account    required     pam_nologin.so
+
+# Standard Un*x authorization.
+@include common-account
+
+# SELinux needs to be the first session rule.
+session [success=ok ignore=ignore module_unknown=ignore default=bad] pam_selinux.so close
+
+# Set the loginuid process attribute.
+session    required     pam_loginuid.so
+
+# Create a new session keyring.
+session    optional     pam_keyinit.so force revoke
+
+# Standard Un*x session setup and teardown.
+@include common-session
+
+# Print the message of the day upon successful login.
+session    optional     pam_motd.so motd=/etc/motd
+
+# Display last login information (AFTER MOTD)
+session    optional     pam_lastlog.so showfailed
+
+# Print the status of the user's mailbox upon successful login.
+session    optional     pam_mail.so standard noenv
+
+# Set up user limits from /etc/security/limits.conf.
+session    required     pam_limits.so
+
+# Read environment variables
+session    required     pam_env.so
+session    required     pam_env.so user_readenv=1 envfile=/etc/default/locale
+
+# SELinux
+session [success=ok ignore=ignore module_unknown=ignore default=bad] pam_selinux.so open
+
+# Standard Un*x password updating.
+@include common-password
+PAMEOF
+
+# Create lastlog file for pam_lastlog
 touch /var/log/lastlog
 chmod 664 /var/log/lastlog
 chown root:utmp /var/log/lastlog
+
+# Create wtmp for login tracking
+touch /var/log/wtmp
+chmod 664 /var/log/wtmp
+chown root:utmp /var/log/wtmp
 
 # Remove Ubuntu legal notice
 rm -f /etc/legal 2>/dev/null || true
