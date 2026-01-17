@@ -45,9 +45,8 @@ sed -i 's/^session.*pam_motd.so/#&/' /etc/pam.d/sshd 2>/dev/null || true
 # Remove any existing pam_lastlog line (we'll add it in the right place)
 sed -i '/pam_lastlog.so/d' /etc/pam.d/sshd 2>/dev/null || true
 
-# Add pam_lastlog BEFORE @include common-session for proper "Last login" display
-# The showfailed option shows failed login attempts too
-sed -i '/@include common-session/i session    optional     pam_lastlog.so showfailed' /etc/pam.d/sshd 2>/dev/null || true
+# Add pam_lastlog AFTER @include common-session so "Last login" appears after MOTD
+sed -i '/@include common-session/a session    optional     pam_lastlog.so showfailed' /etc/pam.d/sshd 2>/dev/null || true
 
 # Create lastlog file if it doesn't exist
 touch /var/log/lastlog
