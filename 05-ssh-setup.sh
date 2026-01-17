@@ -40,8 +40,16 @@ Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
 
 # Disable PAM MOTD to prevent duplicate display (SSH handles it via PrintMotd)
-# Keep pam_lastlog for "Last login" display
 sed -i 's/^session.*pam_motd.so/#&/' /etc/pam.d/sshd 2>/dev/null || true
+
+# Add pam_lastlog for "Last login" display if not present
+if ! grep -q "pam_lastlog.so" /etc/pam.d/sshd; then
+    echo "session    optional     pam_lastlog.so" >> /etc/pam.d/sshd
+fi
+
+# Create lastlog file if it doesn't exist
+touch /var/log/lastlog
+chmod 664 /var/log/lastlog
 
 # Remove Ubuntu legal notice
 rm -f /etc/legal 2>/dev/null || true
