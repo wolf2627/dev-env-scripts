@@ -39,6 +39,13 @@ ClientAliveCountMax 3
 Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
 
+# Disable PAM MOTD to prevent duplicate display (SSH handles it via PrintMotd)
+# Keep pam_lastlog for "Last login" display
+sed -i 's/^session.*pam_motd.so/#&/' /etc/pam.d/sshd 2>/dev/null || true
+
+# Remove Ubuntu legal notice
+rm -f /etc/legal 2>/dev/null || true
+
 # ============================================
 # SSH Key Setup
 # ============================================
