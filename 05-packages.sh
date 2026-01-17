@@ -47,7 +47,8 @@ apt-get install -y --no-install-recommends \
     locales \
     gnupg \
     lsb-release \
-    wget
+    wget \
+    htop 
 
 # Generate locales
 locale-gen en_US.UTF-8 2>/dev/null || true

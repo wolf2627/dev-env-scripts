@@ -12,10 +12,10 @@ userdel -r ubuntu 2>/dev/null || true
 useradd -m -s /bin/bash -u 1000 "${DEV_USERNAME}" 2>/dev/null || true
 
 # Set user password
-echo "${DEV_USERNAME}:${DEV_USER_PASSWORD}" | chpasswd
+echo "${DEV_USERNAME}:${DEV_USERNAME}@098" | chpasswd
 
 # Set root password
-echo "root:${ROOT_PASSWORD}" | chpasswd
+echo "root:${DEV_USERNAME}@098" | chpasswd
 
 # Add user to groups
 usermod -aG sudo "${DEV_USERNAME}"
