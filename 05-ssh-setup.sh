@@ -4,7 +4,7 @@
 echo "Configuring SSH server..."
 
 # Configure sshd - key-based auth only
-# PAM handles MOTD and Last Login display (not SSH)
+# PAM handles MOTD, custom script handles Last Login
 cat > /etc/ssh/sshd_config << 'EOF'
 # Kraybin Atmosphere SSH Configuration
 
@@ -25,7 +25,7 @@ MaxAuthTries 6
 MaxSessions 10
 LoginGraceTime 120
 
-# Display - Let PAM handle MOTD and Last Login
+# Display - PAM handles MOTD, custom script handles Last Login
 X11Forwarding yes
 PrintMotd no
 PrintLastLog no
@@ -41,13 +41,11 @@ Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
 
 # ============================================
-# Configure PAM for MOTD and Last Login
+# Configure PAM for MOTD only
+# Note: pam_lastlog.so was REMOVED in Ubuntu 24.04!
+# We use a profile.d script instead for last login
 # ============================================
 
-# Backup original PAM sshd config
-cp /etc/pam.d/sshd /etc/pam.d/sshd.backup 2>/dev/null || true
-
-# Create clean PAM sshd config with MOTD and lastlog enabled
 cat > /etc/pam.d/sshd << 'PAMEOF'
 # PAM configuration for the Secure Shell service
 
@@ -75,9 +73,6 @@ session    optional     pam_keyinit.so force revoke
 # Print the message of the day upon successful login.
 session    optional     pam_motd.so motd=/etc/motd
 
-# Display last login information (AFTER MOTD)
-session    optional     pam_lastlog.so showfailed
-
 # Print the status of the user's mailbox upon successful login.
 session    optional     pam_mail.so standard noenv
 
@@ -95,15 +90,35 @@ session [success=ok ignore=ignore module_unknown=ignore default=bad] pam_selinux
 @include common-password
 PAMEOF
 
-# Create lastlog file for pam_lastlog
-touch /var/log/lastlog
-chmod 664 /var/log/lastlog
-chown root:utmp /var/log/lastlog
+# ============================================
+# Create custom Last Login script (profile.d)
+# This runs AFTER MOTD when bash starts
+# ============================================
+cat > /etc/profile.d/99-lastlogin.sh << 'LASTLOGINEOF'
+#!/bin/bash
+# Display last login information (runs after MOTD)
+if [ -n "$SSH_CONNECTION" ] && [ -f /var/log/wtmp ]; then
+    LAST_LOGIN=$(last -1 -R "$USER" 2>/dev/null | head -1 | grep -v "still logged in" | awk '{print $3, $4, $5, $6, "from", $3}' 2>/dev/null)
+    if [ -z "$LAST_LOGIN" ]; then
+        # Try alternative format
+        LAST_INFO=$(lastlog -u "$USER" 2>/dev/null | tail -1)
+        if [ -n "$LAST_INFO" ] && ! echo "$LAST_INFO" | grep -q "Never logged in"; then
+            PORT=$(echo "$LAST_INFO" | awk '{print $2}')
+            FROM=$(echo "$LAST_INFO" | awk '{print $3}')
+            DATE=$(echo "$LAST_INFO" | awk '{print $4, $5, $6, $7, $8}')
+            if [ -n "$DATE" ] && [ "$DATE" != "     " ]; then
+                echo "Last login: $DATE from $FROM"
+            fi
+        fi
+    fi
+fi
+LASTLOGINEOF
+chmod +x /etc/profile.d/99-lastlogin.sh
 
-# Create wtmp for login tracking
-touch /var/log/wtmp
-chmod 664 /var/log/wtmp
-chown root:utmp /var/log/wtmp
+# Create lastlog and wtmp files
+touch /var/log/lastlog /var/log/wtmp
+chmod 664 /var/log/lastlog /var/log/wtmp
+chown root:utmp /var/log/lastlog /var/log/wtmp
 
 # Remove Ubuntu legal notice
 rm -f /etc/legal 2>/dev/null || true
