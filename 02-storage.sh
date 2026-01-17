@@ -5,12 +5,41 @@ STORAGE_PATH="/var/labsstorage"
 
 echo "Setting up storage directories..."
 
-# Create storage directories
+# Create base storage directories
 mkdir -p ${STORAGE_PATH}/home
-mkdir -p ${STORAGE_PATH}/usr
-mkdir -p ${STORAGE_PATH}/projects
 mkdir -p ${STORAGE_PATH}/config
 mkdir -p ${STORAGE_PATH}/ssh_host_keys
+
+# ============================================
+# Preserve /usr/local to persistent storage
+# ============================================
+if [ ! -d "${STORAGE_PATH}/usr/local" ]; then
+    echo "Preserving /usr/local to persistent storage..."
+    mkdir -p ${STORAGE_PATH}/usr
+    cp -r /usr/local ${STORAGE_PATH}/usr/
+fi
+
+# Relink /usr/local
+rm -rf /usr/local
+ln -sfn ${STORAGE_PATH}/usr/local /usr/local
+
+# ============================================
+# Preserve /var/spool/cron to persistent storage
+# ============================================
+if [ ! -d "${STORAGE_PATH}/cron" ]; then
+    echo "Preserving /var/spool/cron to persistent storage..."
+    mkdir -p ${STORAGE_PATH}/cron
+    cp -r /var/spool/cron ${STORAGE_PATH}/ 2>/dev/null || mkdir -p ${STORAGE_PATH}/cron/crontabs
+fi
+
+# Relink cron
+rm -rf /var/spool/cron
+ln -sfn ${STORAGE_PATH}/cron /var/spool/cron
+
+# Fix cron permissions
+mkdir -p /var/spool/cron/crontabs
+chown -R root:crontab /var/spool/cron/crontabs 2>/dev/null || true
+chmod -R 1730 /var/spool/cron/crontabs 2>/dev/null || true
 
 # ============================================
 # SSH Host Key Persistence
@@ -38,18 +67,5 @@ if [ ! -L "/home" ]; then
     rm -rf /home
     ln -sfn ${STORAGE_PATH}/home /home
 fi
-
-# Create user home directory
-mkdir -p ${STORAGE_PATH}/home/${DEV_USERNAME}
-
-# ============================================
-# Create shared directories
-# ============================================
-mkdir -p /usr/local/kray
-ln -sfn ${STORAGE_PATH}/usr /usr/local/kray/shared
-
-# Projects directory
-mkdir -p ${STORAGE_PATH}/projects
-ln -sfn ${STORAGE_PATH}/projects /home/${DEV_USERNAME}/projects 2>/dev/null || true
 
 echo "Storage setup complete!"
