@@ -1,9 +1,10 @@
 #!/bin/bash
-# 04-ssh-setup.sh - Configure SSH server and keys
+# 05-ssh-setup.sh - Configure SSH server and keys
 
 echo "Configuring SSH server..."
 
 # Configure sshd - key-based auth only
+# SSH handles MOTD and Last Login display (not PAM)
 cat > /etc/ssh/sshd_config << 'EOF'
 # Kraybin Atmosphere SSH Configuration
 
@@ -24,7 +25,7 @@ MaxAuthTries 6
 MaxSessions 10
 LoginGraceTime 120
 
-# Features
+# Display (SSH handles both MOTD and Last Login)
 X11Forwarding yes
 PrintMotd yes
 PrintLastLog yes
@@ -39,16 +40,17 @@ ClientAliveCountMax 3
 Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
 
-# Disable PAM MOTD to prevent duplicate display (SSH handles it via PrintMotd)
+# ============================================
+# Disable ALL PAM display modules (SSH handles it)
+# ============================================
+# Disable pam_motd.so - prevents duplicate MOTD
 sed -i 's/^session.*pam_motd.so/#&/' /etc/pam.d/sshd 2>/dev/null || true
 
-# Remove any existing pam_lastlog line (we'll add it in the right place)
+# Disable pam_lastlog.so - prevents duplicate/conflicting last login
+sed -i 's/^session.*pam_lastlog.so/#&/' /etc/pam.d/sshd 2>/dev/null || true
 sed -i '/pam_lastlog.so/d' /etc/pam.d/sshd 2>/dev/null || true
 
-# Add pam_lastlog AFTER @include common-session so "Last login" appears after MOTD
-sed -i '/@include common-session/a session    optional     pam_lastlog.so showfailed' /etc/pam.d/sshd 2>/dev/null || true
-
-# Create lastlog file if it doesn't exist
+# Create lastlog file for SSH's PrintLastLog
 touch /var/log/lastlog
 chmod 664 /var/log/lastlog
 chown root:utmp /var/log/lastlog

@@ -3,17 +3,17 @@
 
 echo "Setting up MOTD..."
 
-# Disable default MOTD scripts
+# Disable default MOTD scripts (we use static /etc/motd)
 chmod -x /etc/update-motd.d/* 2>/dev/null || true
 rm -f /etc/update-motd.d/* 2>/dev/null || true
 
-# Get system info
+# Get system info for static MOTD
 HOSTNAME_VAL=$(hostname)
 OS_DESC=$(lsb_release -ds 2>/dev/null || cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)
 KERNEL_INFO=$(uname -srm)
 WG_IP=$(ip -4 addr show wg0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || echo "N/A")
 
-# Create static MOTD
+# Create static MOTD (displayed by SSH's PrintMotd yes)
 cat > /etc/motd << EOF
 
  ██ ▄█▀ ██▀███   ▄▄▄     ▓██   ██▓ ▄▄▄▄    ██▓ ███▄    █ 
@@ -46,9 +46,5 @@ With great power comes great responsibility. Happy coding! 🚀
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 EOF
-
-# Enable PrintLastLog in SSH config to show "Last login" info
-sed -i 's/^#PrintLastLog.*/PrintLastLog yes/' /etc/ssh/sshd_config 2>/dev/null || true
-grep -q "^PrintLastLog" /etc/ssh/sshd_config || echo "PrintLastLog yes" >> /etc/ssh/sshd_config
 
 echo "MOTD setup complete!"
