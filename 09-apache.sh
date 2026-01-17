@@ -14,6 +14,13 @@ if ! command -v apache2 &> /dev/null; then
     rm -rf /var/lib/apt/lists/*
 fi
 
+# ============================================
+# Fix Apache ServerName warning
+# ============================================
+echo "Configuring Apache ServerName..."
+echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf
+a2enconf servername 2>/dev/null || true
+
 # Add user to www-data group
 usermod -aG www-data ${DEV_USERNAME}
 

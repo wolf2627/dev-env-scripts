@@ -12,6 +12,21 @@ fi
 
 echo "Installing development packages..."
 
+# ============================================
+# Fix locale warnings first
+# ============================================
+echo "Setting up locales..."
+apt-get update
+apt-get install -y --no-install-recommends locales apt-utils
+
+# Generate and configure locale
+sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen
+locale-gen en_US.UTF-8
+update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 apt-get update
 
 apt-get install -y --no-install-recommends \
