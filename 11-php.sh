@@ -1,6 +1,13 @@
 #!/bin/bash
 # 11-php.sh - Install PHP with database extensions (Apache mod_php)
 
+# Skip if PHP is already installed
+if command -v php &>/dev/null; then
+    echo "PHP already installed: $(php -v | head -1)"
+    echo "Skipping PHP installation..."
+    return 0
+fi
+
 echo "Installing PHP and extensions..."
 
 # Add PHP repository for latest version

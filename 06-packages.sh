@@ -56,7 +56,8 @@ apt-get install -y --no-install-recommends \
     gnupg \
     lsb-release \
     wget \
-    nano
+    nano \
+    software-properties-common
 
 # Generate locales
 locale-gen en_US.UTF-8 2>/dev/null || true
