@@ -5,9 +5,9 @@ echo "Setting up WireGuard VPN..."
 
 # Check if WireGuard config exists
 if [ ! -f /etc/wireguard/wg0.conf ]; then
-    echo "ERROR: WireGuard config not found at /etc/wireguard/wg0.conf"
-    echo "Please create wireguard.conf in the project root directory."
-    exit 1
+    echo "WireGuard config not found at /etc/wireguard/wg0.conf"
+    echo "Skipping WireGuard setup..."
+    return 0
 fi
 
 # Check if config has been filled in (not just template)
