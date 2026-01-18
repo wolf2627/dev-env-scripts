@@ -124,7 +124,7 @@ chown root:utmp /var/log/lastlog /var/log/wtmp
 rm -f /etc/legal 2>/dev/null || true
 
 # ============================================
-# SSH Key Setup
+# SSH Key Setup (supports multiple keys)
 # ============================================
 SSH_DIR="/home/${DEV_USERNAME}/.ssh"
 AUTHORIZED_KEYS="${SSH_DIR}/authorized_keys"
@@ -134,21 +134,37 @@ mkdir -p "$SSH_DIR"
 chmod 700 "$SSH_DIR"
 chown -R ${DEV_USERNAME}:${DEV_USERNAME} "$SSH_DIR"
 
-# Handle SSH public key from environment
+# Handle SSH public keys from environment
+# Supports multiple keys separated by semicolons (;)
+# Example: SSH_PUBLIC_KEY="ssh-rsa AAA... user1;ssh-ed25519 AAA... user2"
 if [ -n "$SSH_PUBLIC_KEY" ]; then
-    echo "Setting up SSH public key..."
+    echo "Setting up SSH public keys..."
     
-    if [ -f "$AUTHORIZED_KEYS" ]; then
-        if ! grep -qF "$SSH_PUBLIC_KEY" "$AUTHORIZED_KEYS"; then
-            echo "$SSH_PUBLIC_KEY" >> "$AUTHORIZED_KEYS"
-            echo "SSH key added to authorized_keys"
+    # Create authorized_keys if it doesn't exist
+    touch "$AUTHORIZED_KEYS"
+    
+    # Split by semicolon and process each key
+    IFS=';' read -ra KEYS <<< "$SSH_PUBLIC_KEY"
+    KEYS_ADDED=0
+    
+    for KEY in "${KEYS[@]}"; do
+        # Trim whitespace
+        KEY=$(echo "$KEY" | xargs)
+        
+        # Skip empty keys
+        [ -z "$KEY" ] && continue
+        
+        # Check if key already exists
+        if ! grep -qF "$KEY" "$AUTHORIZED_KEYS" 2>/dev/null; then
+            echo "$KEY" >> "$AUTHORIZED_KEYS"
+            KEYS_ADDED=$((KEYS_ADDED + 1))
+            echo "  ✓ Added key: ${KEY:0:50}..."
         else
-            echo "SSH key already exists in authorized_keys"
+            echo "  - Key already exists: ${KEY:0:50}..."
         fi
-    else
-        echo "$SSH_PUBLIC_KEY" > "$AUTHORIZED_KEYS"
-        echo "Created authorized_keys with SSH key"
-    fi
+    done
+    
+    echo "Total keys added: $KEYS_ADDED"
     
     chmod 600 "$AUTHORIZED_KEYS"
     chown ${DEV_USERNAME}:${DEV_USERNAME} "$AUTHORIZED_KEYS"
