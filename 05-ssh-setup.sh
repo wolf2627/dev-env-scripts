@@ -128,24 +128,44 @@ rm -f /etc/legal 2>/dev/null || true
 # ============================================
 SSH_DIR="/home/${DEV_USERNAME}/.ssh"
 AUTHORIZED_KEYS="${SSH_DIR}/authorized_keys"
+SSH_KEYS_FILE="/etc/ssh/ssh_keys"
 
 # Create .ssh directory
 mkdir -p "$SSH_DIR"
 chmod 700 "$SSH_DIR"
 chown -R ${DEV_USERNAME}:${DEV_USERNAME} "$SSH_DIR"
 
-# Handle SSH public keys from environment
-# Supports multiple keys separated by semicolons (;)
-# Example: SSH_PUBLIC_KEY="ssh-rsa AAA... user1;ssh-ed25519 AAA... user2"
-if [ -n "$SSH_PUBLIC_KEY" ]; then
-    echo "Setting up SSH public keys..."
+KEYS_ADDED=0
+
+# Method 1: Read from ssh_keys file (preferred)
+# Format: One key per line, comments (#) and empty lines are ignored
+# This REPLACES authorized_keys - users can add more keys manually after login
+if [ -f "$SSH_KEYS_FILE" ]; then
+    echo "Setting up SSH public keys from file..."
     
-    # Create authorized_keys if it doesn't exist
-    touch "$AUTHORIZED_KEYS"
+    # Clear existing authorized_keys and start fresh from ssh_keys file
+    > "$AUTHORIZED_KEYS"
+    
+    while IFS= read -r KEY || [ -n "$KEY" ]; do
+        # Trim whitespace
+        KEY=$(echo "$KEY" | xargs)
+        
+        # Skip empty lines and comments
+        [ -z "$KEY" ] && continue
+        [[ "$KEY" == \#* ]] && continue
+        
+        echo "$KEY" >> "$AUTHORIZED_KEYS"
+        KEYS_ADDED=$((KEYS_ADDED + 1))
+        echo "  ✓ Added key: ${KEY:0:50}..."
+    done < "$SSH_KEYS_FILE"
+    
+# Method 2: Fallback to environment variable (legacy support)
+# Supports multiple keys separated by semicolons (;)
+elif [ -n "$SSH_PUBLIC_KEY" ]; then
+    echo "Setting up SSH public keys from environment..."
     
     # Split by semicolon and process each key
     IFS=';' read -ra KEYS <<< "$SSH_PUBLIC_KEY"
-    KEYS_ADDED=0
     
     for KEY in "${KEYS[@]}"; do
         # Trim whitespace
@@ -163,14 +183,15 @@ if [ -n "$SSH_PUBLIC_KEY" ]; then
             echo "  - Key already exists: ${KEY:0:50}..."
         fi
     done
-    
-    echo "Total keys added: $KEYS_ADDED"
-    
-    chmod 600 "$AUTHORIZED_KEYS"
-    chown ${DEV_USERNAME}:${DEV_USERNAME} "$AUTHORIZED_KEYS"
 else
-    echo "WARNING: No SSH_PUBLIC_KEY provided!"
+    echo "WARNING: No SSH keys provided!"
+    echo "Neither ssh_keys file nor SSH_PUBLIC_KEY environment variable found."
     echo "You will not be able to SSH into the container."
 fi
+
+echo "Total keys added: $KEYS_ADDED"
+
+chmod 600 "$AUTHORIZED_KEYS"
+chown ${DEV_USERNAME}:${DEV_USERNAME} "$AUTHORIZED_KEYS"
 
 echo "SSH configuration complete!"
