@@ -1,11 +1,19 @@
 #!/bin/bash
-# 05-packages.sh - Install development packages
+# 06-packages.sh - Install development packages
 
-STORAGE_PATH="/var/labsstorage"
-MARKER_FILE="${STORAGE_PATH}/.packages_installed"
+# Check if key packages are already installed (checks actual system state)
+check_packages_installed() {
+    local packages=("vim" "python3" "tmux" "htop" "jq")
+    for pkg in "${packages[@]}"; do
+        if ! dpkg -l "$pkg" &>/dev/null; then
+            return 1  # Package not installed
+        fi
+    done
+    return 0  # All packages installed
+}
 
-# Skip if packages already installed (persistence check)
-if [ -f "$MARKER_FILE" ]; then
+# Skip if packages already installed in this container
+if check_packages_installed; then
     echo "Packages already installed, skipping..."
     return 0
 fi
@@ -47,8 +55,7 @@ apt-get install -y --no-install-recommends \
     locales \
     gnupg \
     lsb-release \
-    wget \
-    htop 
+    wget
 
 # Generate locales
 locale-gen en_US.UTF-8 2>/dev/null || true
@@ -57,8 +64,5 @@ update-locale LANG=en_US.UTF-8 2>/dev/null || true
 # Clean up
 apt-get clean
 rm -rf /var/lib/apt/lists/*
-
-# Mark as installed
-touch "$MARKER_FILE"
 
 echo "Package installation complete!"
