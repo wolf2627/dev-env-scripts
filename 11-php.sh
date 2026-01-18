@@ -72,10 +72,11 @@ DIREOF
 
     # Enable PHP module for Apache
     a2enmod php8.3 2>/dev/null || true
-    
-    # Restart Apache if running
-    systemctl restart apache2 2>/dev/null || true
 fi
+
+# Restart Apache to apply all PHP config changes (short_open_tag, etc.)
+echo "Restarting Apache to apply PHP configuration..."
+service apache2 restart 2>/dev/null || true
 
 # Clean up
 apt-get clean
