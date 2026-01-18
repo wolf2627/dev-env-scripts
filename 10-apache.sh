@@ -60,6 +60,23 @@ fi
 # Link /var/www/html to user htdocs
 # ============================================
 echo "Linking web root to user htdocs..."
+
+# Configure Apache to follow symlinks and allow access to user htdocs
+cat > /etc/apache2/conf-available/htdocs-symlink.conf << EOF
+<Directory /var/www/html>
+    Options Indexes FollowSymLinks
+    AllowOverride All
+    Require all granted
+</Directory>
+
+<Directory /home/${DEV_USERNAME}/htdocs>
+    Options Indexes FollowSymLinks
+    AllowOverride All
+    Require all granted
+</Directory>
+EOF
+a2enconf htdocs-symlink 2>/dev/null || true
+
 rm -rf /var/www/html
 ln -sfn /home/${DEV_USERNAME}/htdocs /var/www/html
 
