@@ -109,10 +109,13 @@ EOF
 chmod 440 ${SUDOERS_FILE}
 
 # ============================================
-# Fix ownership
+# Fix ownership and permissions
 # ============================================
 chown -R ${DEV_USERNAME}:${DEV_USERNAME} /home/${DEV_USERNAME}/htdocs
 chown -R ${DEV_USERNAME}:${DEV_USERNAME} /home/${DEV_USERNAME}/htconfig
+
+# Allow Apache (www-data) to traverse home directory to reach htdocs
+chmod o+x /home/${DEV_USERNAME}
 
 # ============================================
 # Start Apache
